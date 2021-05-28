@@ -45,7 +45,7 @@ namespace AdEngineAPI
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AdEngineAPI v1"));
             }
 
-            app.UseHttpsRedirection();
+           
 
             app.UseRouting();
 

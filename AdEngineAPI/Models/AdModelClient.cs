@@ -17,6 +17,5 @@ namespace AdEngineAPI.Models
         public string redirectUrl { get; set; }
         public int duration { get; set; }
         public int companyId { get; set; }
-
     }
 }
