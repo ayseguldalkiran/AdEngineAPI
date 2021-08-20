@@ -26,19 +26,6 @@ namespace AdEngineAPI.Controllers
             return document;
         }
 
-        /*
-        [HttpGet("{day}")]
-        public StatisticsModel getStatisticsByDay(string day)
-        {
-            //var dayToday = System.DateTime.Now.DayOfWeek.ToString();
-
-            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
-            var database = client.GetDatabase("AdEngineDB");
-            var collection = database.GetCollection<StatisticsModel>("statistics");
-            var results = collection.Find(x => x.dayName == day ).Limit(1).ToList();
-            StatisticsModel singleResult = results.FirstOrDefault();
-
-            return singleResult;
-        }*/
+      
     }
 }

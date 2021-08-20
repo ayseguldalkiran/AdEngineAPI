@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using AdEngineAPI.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using AdEngineAPI.Helpers;
 // ...
 
 
@@ -18,7 +19,7 @@ namespace AdEngineAPI.Controllers
 
     public class AdvertisingController : Controller
     {
-        
+
 
         [HttpGet]
         public IEnumerable<AdModel> Get()
@@ -26,12 +27,34 @@ namespace AdEngineAPI.Controllers
             var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
             var database = client.GetDatabase("AdEngineDB");
             var collection = database.GetCollection<AdModel>("campaigns");
-            var document = collection.Find(advertise => advertise.id>=1).ToList();
+            var document = collection.Find(advertise => advertise.id >= 1).ToList();
+            return document;
 
+        } 
+        [HttpGet("/GetAllAdvertiseRequests")]
+        public IEnumerable<AdModel> GetAllAdvertiseRequests()
+        {
+            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
+            var database = client.GetDatabase("AdEngineDB");
+            var collection = database.GetCollection<AdModel>("campaignRequests");
+            var document = collection.Find(advertise => advertise.id >= 1).ToList();
             return document;
 
         }
+       
 
+        [HttpGet("/GetAdvertiseRequest/{id}")]
+        public AdModel GetAdvertiseRequest(int id)
+        {
+            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
+            var database = client.GetDatabase("AdEngineDB");
+            var collection = database.GetCollection<AdModel>("campaignRequests");
+            var results = collection.Find(x => x.id == id).Limit(1).ToList();
+            AdModel singleResult = results.FirstOrDefault();
+
+            return singleResult;
+
+        }
         [HttpGet("{id}")]
         public AdModel Get(int id)
         {
@@ -49,13 +72,19 @@ namespace AdEngineAPI.Controllers
         [HttpPost]
         public AdModelClient NewAdvertise(AdModelClient newAdvertise)
         {
+            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
+            var database = client.GetDatabase("AdEngineDB");
+            var collection = database.GetCollection<AdModel>("campaigns");
+         var collectionRequests = database.GetCollection<AdModel>("campaignRequests");
+            AdModel resultCampaign = collectionRequests.Find(x => true).SortByDescending(a => a.id).ToList().FirstOrDefault();
+            AdModel resultPending = collection.Find(x => true).SortByDescending(a => a.id).ToList().FirstOrDefault();
             AdModel AdModelYeni = new AdModel()
             {
                 _Id = ObjectId.GenerateNewId(),
                 campaignName = newAdvertise.campaignName,
                 startTime = newAdvertise.startTime,
                 endTime = newAdvertise.endTime,
-                id = newAdvertise.id,
+                id = (resultPending == null && resultCampaign == null) ? 1 : (resultCampaign.id > resultPending.id ? resultCampaign.id + 1 : resultPending.id + 1),
                 styleType = newAdvertise.styleType,
                 imgUrl = newAdvertise.imgUrl,
                 applicationName = newAdvertise.applicationName,
@@ -64,16 +93,67 @@ namespace AdEngineAPI.Controllers
                 companyId = newAdvertise.companyId,
                 clickCount = 0
             };
-            
-            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
-            var database = client.GetDatabase("AdEngineDB");
-            var collection = database.GetCollection<AdModel>("campaigns");
 
- 
+            
+
+
             collection.InsertOne(AdModelYeni);
 
             return newAdvertise;
-      
+
+        }
+
+        [HttpPost ("/AddAdvertiseRequest")]
+        public AdModelClient NewAdvertiseRequest(AdModelClient newAdvertise)
+        {
+            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
+            var database = client.GetDatabase("AdEngineDB");
+            var collection = database.GetCollection<AdModel>("campaignRequests");
+            var collectionCampaigns = database.GetCollection<AdModel>("campaigns");
+            AdModel resultCampaign = collectionCampaigns.Find(x => true).SortByDescending(a => a.id).ToList().FirstOrDefault();
+            AdModel resultPending = collection.Find(x => true).SortByDescending(a => a.id).ToList().FirstOrDefault();
+            
+            AdModel AdModelYeni = new AdModel()
+            {
+                _Id = ObjectId.GenerateNewId(),
+                campaignName = newAdvertise.campaignName,
+                startTime = newAdvertise.startTime,
+                endTime = newAdvertise.endTime,
+                id = (resultPending==null && resultCampaign==null)  ? 1 :(resultCampaign.id > resultPending.id ? resultCampaign.id +1 : resultPending.id +1 ),
+                styleType = newAdvertise.styleType,
+                imgUrl = newAdvertise.imgUrl,
+                applicationName = newAdvertise.applicationName,
+                redirectUrl = newAdvertise.redirectUrl,
+                duration = newAdvertise.duration,
+                companyId = newAdvertise.companyId,
+                clickCount = 0
+            };
+           
+            collection.InsertOne(AdModelYeni);
+            return newAdvertise;
+
+        }
+        [HttpGet("/approveAdvertise/{id}/{option}")]
+        public string ApproveRequest(int id,string option)
+        {
+            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
+            var database = client.GetDatabase("AdEngineDB");
+            var requestCollection = database.GetCollection<AdModel>("campaignRequests");
+            var campaignCollection = database.GetCollection<AdModel>("campaigns");
+            if (option == "approve")
+            {
+                var results = requestCollection.Find(x => x.id == id).Limit(1).ToList();
+                AdModel singleResult = results.FirstOrDefault();
+                campaignCollection.InsertOne(singleResult);
+                var filter = Builders<AdModel>.Filter.Eq("id", id);
+                requestCollection.DeleteOne(filter);
+            }
+            else if (option == "decline")
+            {
+                var filter = Builders<AdModel>.Filter.Eq("id", id);
+                requestCollection.DeleteOne(filter);
+            }
+            return "";
         }
 
         [HttpPut]
@@ -127,6 +207,16 @@ namespace AdEngineAPI.Controllers
             collection.UpdateOne(filter, updateCompanyId);
             return Advertise;
 
+        }
+        [HttpDelete("/deleteCampaign/{id}")]
+        public string deleteCampaign(string id)
+        {
+            var client = new MongoClient("mongodb+srv://aysegul:adenginepassword@cluster0.zpn92.mongodb.net/AdEngineDB?retryWrites=true&w=majority");
+            var database = client.GetDatabase("AdEngineDB");
+            var collection = database.GetCollection<AdModel>("campaigns");
+            var filter = Builders<AdModel>.Filter.Eq("id", id);
+            collection.DeleteOne(filter);
+            return "Succesfully Deleted";
         }
 
     }
